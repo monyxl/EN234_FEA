@@ -6,12 +6,12 @@ program en234fea
   implicit none
  
   character (len=80) :: VS_root_folder
-  character (len=80) :: Eclipse_root_folder
+  !character (len=80) :: Eclipse_root_folder
+  VS_root_folder = 'C:/Users/tedqi/Source/Repos/EN234_FEA/EN234_FEA/'
+!  VS_root_folder = 'H:/Repos/EN234_FEA/EN234_FEA/'   ! This should work with Intel Studio on the remote desktop if you follow the instructions for cloning your EN234FEA fork 
+!  Eclipse_root_folder = './'   !  This should work with Eclipse
 
-  VS_root_folder = 'H:/Repos/EN234_FEA/EN234_FEA/'   ! This should work with Intel Studio on the remote desktop if you follow the instructions for cloning your EN234FEA fork 
-  Eclipse_root_folder = './'   !  This should work with Eclipse
-
-  VS_root_folder = 'C:/Users/Bower/Source/Repos/EN234_FEA/EN234_FEA/'
+!  VS_root_folder = 'C:/Users/Bower/Source/Repos/EN234_FEA/EN234_FEA/'
   root_directory = VS_root_folder
     
 !
@@ -31,8 +31,8 @@ program en234fea
 !   Demo codes - these provide examples of coding and testing ABAQUS user elements in EN234FEA
 !
 !   Small strain linear elasticity - the UEL is in Abaqus_uel_3d.for
-   infil = 'input_files/Abaqus_uel_linear_elastic_3d.in'
-   outfil = 'Output_files/Abaqus_uel_linear_elastic_3d.out'
+!   infil = 'input_files/Abaqus_uel_linear_elastic_3d.in'
+!   outfil = 'Output_files/Abaqus_uel_linear_elastic_3d.out'
 
 !   Linear elastic plate with a central hole using an ABAQUS UEL
 !   infil = 'input_files/Abaqus_uel_holeplate_3d.in'
@@ -124,6 +124,9 @@ program en234fea
 !   infil = 'input_files/Abaqus_uel_continuum_beam.in'
 !   outfil = 'Output_files/Abaqus_uel_continuum_beam.out'
 
+   infil = 'Input_files/Abaqus_uel_holeplate_3d.in'
+   outfil = 'Output_Files/Abaqus_uel_holeplate_3d.out'
+   
    infil = trim(root_directory)//trim(infil)
    outfil = trim(root_directory)//trim(outfil)
    open (unit = IOR, file = trim(infil), status = 'old', ERR=500)
