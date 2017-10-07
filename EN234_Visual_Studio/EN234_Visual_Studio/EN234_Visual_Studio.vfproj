@@ -59,6 +59,7 @@
 		<File RelativePath="..\..\EN234_FEA\input_files\Abaqus_uel_holeplate_3d.in"/>
 		<File RelativePath="..\..\EN234_FEA\input_files\Abaqus_uel_hyperelastic.in"/>
 		<File RelativePath="..\..\EN234_FEA\input_files\Abaqus_uel_linear_elastic_2d.in"/>
+		<File RelativePath="..\..\EN234_FEA\input_files\Abaqus_uel_linear_elastic_2d_2el.in"/>
 		<File RelativePath="..\..\EN234_FEA\input_files\Abaqus_uel_linear_elastic_3d.in"/>
 		<File RelativePath="..\..\EN234_FEA\input_files\Abaqus_uel_phasefield_1el.in"/>
 		<File RelativePath="..\..\EN234_FEA\input_files\Abaqus_uel_phasefield_coarse.in"/>

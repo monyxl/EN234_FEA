@@ -66,8 +66,12 @@ program en234fea
 !   Homework 3: develop and test an ABAQUS user element implementing 2D linear elasticity with full integration
 
 !   Simple test of a 2D plane element
-   infil = 'Input_files/Abaqus_uel_linear_elastic_2d.in'
-   outfil = 'Output_files/Abaqus_uel_linear_elastic_2d.out'
+   !infil = 'Input_files/Abaqus_uel_linear_elastic_2d.in'
+   !outfil = 'Output_files/Abaqus_uel_linear_elastic_2d.out'
+   
+!   Simple test of a 2D plane element (2 TRIANGLES)
+   infil = 'Input_files/Abaqus_uel_linear_elastic_2d_2el.in'
+   outfil = 'Output_files/Abaqus_uel_linear_elastic_2d_2el.out'
 
 !  Solve hole-in-a-plate problem with 4 noded quadrilateral elements
     !infil = 'input_files/Abaqus_uel_holeplate_2d_quad4.in'
@@ -78,11 +82,11 @@ program en234fea
    !outfil = 'Output_files/Abaqus_uel_holeplate_2d_quad8.out'
 
 !  Solve hole-in-a-plate problem with 3 noded triangles
-!   infil = 'input_files/Abaqus_uel_holeplate_2d_tri3.in'
-!   outfil = 'Output_files/Abaqus_uel_holeplate_2d_tri3.out'
+   !infil = 'input_files/Abaqus_uel_holeplate_2d_tri3.in'
+   !outfil = 'Output_files/Abaqus_uel_holeplate_2d_tri3.out'
 
-!   infil = 'input_files/Abaqus_uel_holeplate_2d_tri6.in'
-!   outfil = 'Output_files/Abaqus_uel_holeplate_2d_tri6.out'
+   !infil = 'input_files/Abaqus_uel_holeplate_2d_tri6.in'
+   !outfil = 'Output_files/Abaqus_uel_holeplate_2d_tri6.out'
 
 !  HW5  Cantilever beam to test incompatible mode elements
 

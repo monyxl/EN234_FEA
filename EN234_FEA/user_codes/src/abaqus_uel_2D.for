@@ -142,7 +142,8 @@
       if (NNODE == 9) n_points = 9             ! Quadratic rect
 
     ! Write your code for a 2D element below
-      call abq_UEL_2D_integrationpoints(n_points, nfacenodes, xi, w)
+      
+      call abq_UEL_2D_integrationpoints(n_points, NNODE, xi, w)
       
       if (MLVARX<2*NNODE) then
         write(6,*) ' Error in abaqus UEL '
@@ -153,12 +154,14 @@
       
       RHS(1:MLVARX,1) = 0.d0
       AMATRX(1:NDOFEL,1:NDOFEL) = 0.d0
+      
+      
       D = 0.d0
       E = PROPS(1)
       xnu = PROPS(2)
-      d44=0.5D0*E/(1+xnu)
-      d11=(1.D0-xnu)*E/( (1+xnu)*(1-2.D0*xnu) )
-      d12=xnu*E/( (1+xnu)*(1-2.D0*xnu) )
+      d44 = 0.5D0*E/(1+xnu)
+      d11 = (1.D0-xnu)*E/( (1+xnu)*(1-2.D0*xnu) )
+      d12 = xnu*E/( (1+xnu)*(1-2.D0*xnu) )
       
       D(1:3,1:2) = d12
       D(1,1) = d11
@@ -173,6 +176,11 @@
         dxdxi = matmul(coords(1:2,1:NNODE),dNdxi(1:NNODE,1:2))
         call abq_inverse_LU(dxdxi,dxidx,2)
         determinant = dxdxi(1,1)*dxdxi(2,2)-dxdxi(1,2)*dxdxi(2,1)
+        IF (determinant==0.d0) THEN
+          write(6,*) ' Error in subroutine abq_UEL_inver3d'
+          write(6,*) ' A 2x2 matrix has a zero determinant'
+          stop
+        endif
         dNdx(1:NNODE,1:2) = matmul(dNdxi(1:NNODE,1:2),dxidx)
         B = 0.d0
         B(1,1:2*NNODE-1:2) = dNdx(1:NNODE,1)
@@ -706,7 +714,7 @@
             x(n)=d(n)/U(n,n)
             do i = n-1,1,-1
                 x(i) = d(i)
-                x(i)=x(i)-dot_product(U(i,i+1:n),x(i+1:n))
+                x(i) = x(i)-dot_product(U(i,i+1:n),x(i+1:n))
                 x(i) = x(i)/U(i,i)
             end do
             A_inverse(1:n,k) = x(1:n)
