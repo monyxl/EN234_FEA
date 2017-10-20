@@ -91,21 +91,22 @@
     !       MLVARX                      Dimension variable (equal to NDOFEL in EN234FEA)
     !       PERIOD                      Time period of the current step
     !
+    !
     ! Local Variables
       integer      :: i,j,n_points,kint, nfacenodes, ipoin, ksize
       integer      :: face_node_list(3)                       ! List of nodes on an element face
     !
-      double precision  ::  xi(2,9), xi2(2,9)                ! Area integration points
+      double precision  ::  xi(2,9)                          ! Area integration points
       double precision  ::  w(9)                             ! Area integration weights
       double precision  ::  N(9)                             ! 2D shape functions
-      double precision  ::  dNdxi(9,2),dNdxi2(9,2)           ! 2D shape function derivatives
+      double precision  ::  dNdxi(9,2)                       ! 2D shape function derivatives
       double precision  ::  dNdx(9,2)                        ! Spatial derivatives
       double precision  ::  dxdxi(2,2)                       ! Derivative of spatial coords wrt normalized coords
 
     !   Variables below are for computing integrals over element faces
       double precision  ::  face_coords(2,3)                  ! Coords of nodes on an element face
       double precision  ::  xi1(6)                            ! 1D integration points
-      double precision  ::  w1(6)                             ! Integration weights
+      double precision  ::  w1(6)                              ! Integration weights
       double precision  ::  N1(3)                             ! 1D shape functions
       double precision  ::  dN1dxi(3)                         ! 1D shape function derivatives
       double precision  ::  norm(2)                           ! Normal to an element face
@@ -122,8 +123,7 @@
       double precision  ::  kau(4,18)                         ! Lower quadrant of stiffness
       double precision  ::  kua(18,4)                         ! Upper quadrant of stiffness
       double precision  ::  alpha(4)                          ! Internal DOF for incompatible mode element
-      double precision  ::  Utemp(12)                          ! Internal DOF for incompatible mode element
-      double precision  ::  dxidx(2,2), dxidx2(2,2), determinant, det0     ! Jacobian inverse and determinant
+      double precision  ::  dxidx(2,2), determinant, det0     ! Jacobian inverse and determinant
       double precision  ::  E, xnu, D44, D11, D12             ! Material properties
 
     !
@@ -156,7 +156,6 @@
       AMATRX(1:NDOFEL,1:NDOFEL) = 0.d0
       
       
-      
       D = 0.d0
       E = PROPS(1)
       xnu = PROPS(2)
@@ -170,191 +169,82 @@
       D(4,4) = d44
       
       ENERGY(1:8) = 0.d0
-      if (JTYPE==2) then
-          rhs_temp(1:2*NNODE+4,1) = 0.d0
-          ktemp(1:2*NNODE+4,1:2*NNODE+4) = 0.d0
-        !     --  Loop over integration points
-          do kint = 1, n_points
-            xi2(1:2,kint) = 0.d0
-            call abq_UEL_2D_shapefunctions(xi2(1:2,kint),NNODE,N,dNdxi2)
-            dxdxi2 = matmul(coords(1:2,1:NNODE),dNdxi2(1:NNODE,1:2))
-            det0 = dxdxi2(1,1)*dxdxi2(2,2)-dxdxi2(1,2)*dxdxi2(2,1)
-            IF (det0==0.d0) THEN
-              write(6,*) ' Error in subroutine abq_UEL_inver3d'
-              write(6,*) ' A 2x2 matrix has a zero determinant'
-              stop
-            endif
-            
-            call abq_UEL_2D_shapefunctions(xi(1:2,kint),NNODE,N,dNdxi)
-            dxdxi = matmul(coords(1:2,1:NNODE),dNdxi(1:NNODE,1:2))
-            call abq_inverse_LU(dxdxi,dxidx,2)
-            determinant = dxdxi(1,1)*dxdxi(2,2)-dxdxi(1,2)*dxdxi(2,1)
-            IF (determinant==0.d0) THEN
-              write(6,*) ' Error in subroutine abq_UEL_inver3d'
-              write(6,*) ' A 2x2 matrix has a zero determinant'
-              stop
-            endif
-            dNdx(1:NNODE,1:2) = matmul(dNdxi(1:NNODE,1:2),dxidx)
-            B = 0.d0
-            B(1,1:2*NNODE-1:2) = dNdx(1:NNODE,1)
-            B(1,2*NNODE+1) = determinant/det0*xi(1,kint)*dxidx(1,1)
-            B(1,2*NNODE+3) = determinant/det0*xi(2,kint)*dxidx(2,1)
-            B(2,2:2*NNODE:2) = dNdx(1:NNODE,2)
-            B(2,2*NNODE+2) = determinant/det0*xi(1,kint)*dxdxi(1,2)
-            B(2,2*NNODE+4) = determinant/det0*xi(2,kint)*dxdxi(2,2)
-            B(4,1:2*NNODE-1:2) = dNdx(1:NNODE,2)
-            B(4,2:2*NNODE:2) = dNdx(1:NNODE,1)
-            B(4,2*NNODE+1) = determinant/det0*xi(1,kint)*dxidx(1,2)
-            B(4,2*NNODE+2) = determinant/det0*xi(1,kint)*dxdxi(1,1)
-            B(4,2*NNODE+3) = determinant/det0*xi(2,kint)*dxidx(2,2)
-            B(4,2*NNODE+4) = determinant/det0*xi(2,kint)*dxdxi(2,1)
-            
-            Utemp(1:2*NNODE)=U(1:2*NNODE)
-            Utemp(2*NNODE+1:2*NNODE+4)=alpha(1:4)
-            
-            strain = matmul(B(1:4,1:2*NNODE+4),Utemp(1:2*NNODE+4))
+
+    !     --  Loop over integration points
+      do kint = 1, n_points
+        call abq_UEL_2D_shapefunctions(xi(1:2,kint),NNODE,N,dNdxi)
+        dxdxi = matmul(coords(1:2,1:NNODE),dNdxi(1:NNODE,1:2))
+        call abq_inverse_LU(dxdxi,dxidx,2)
+        determinant = dxdxi(1,1)*dxdxi(2,2)-dxdxi(1,2)*dxdxi(2,1)
+        IF (determinant==0.d0) THEN
+          write(6,*) ' Error in subroutine abq_UEL_inver3d'
+          write(6,*) ' A 2x2 matrix has a zero determinant'
+          stop
+        endif
+        dNdx(1:NNODE,1:2) = matmul(dNdxi(1:NNODE,1:2),dxidx)
+        B = 0.d0
+        B(1,1:2*NNODE-1:2) = dNdx(1:NNODE,1)
+        B(2,2:2*NNODE:2) = dNdx(1:NNODE,2)
+        B(4,1:2*NNODE-1:2) = dNdx(1:NNODE,2)
+        B(4,2:2*NNODE:2) = dNdx(1:NNODE,1)
         
-            stress = matmul(D,strain)
-            rhs_temp(1:2*NNODE+4,1) = rhs_temp(1:2*NNODE+4,1)
-         1   - matmul(transpose(B(1:4,1:2*NNODE+4)),stress(1:4))*
-         2                                          w(kint)*determinant
+        strain = matmul(B(1:4,1:2*NNODE),U(1:2*NNODE))
         
-            ktemp(1:2*NNODE+4,1:2*NNODE+4) = ktemp(1:2*NNODE+4,1:2*NNODE
-         1  +4)+ matmul(transpose(B(1:4,1:2*NNODE+4)),matmul(D,B(1:4,1:2
-         2                            *NNODE+4)))*w(kint)*determinant
-            kuu(1:2*NNODE,1:2*NNODE) = ktemp(1:2*NNODE,1:2*NNODE)
-            kaa(1:4,1:4)=ktemp(2*NNODE+1:2*NNODE+4,2*NNODE+1:2*NNODE+4)
-            kau(1:4,1:2*NNODE)=ktemp(2*NNODE+1:2*NNODE+4,1:2*NNODE)
-            call abq_inverse_LU(kaa,kaainv,2)
-            
-            AMATRX(1:2*NNODE,1:2*NNODE)=kuu(1:2*NNODE,1:2*NNODE)
-         1  - matmul(transpose(kau(1:4,1:2*NNODE)),matmul(kaainv,
-         2                            kau(1:4,1:2*NNODE+4)))
-            RHS(1:2*NNODE)=rhs_temp(1:2*NNODE)
-         1  - matmul(transpose(kau(1:4,1:2*NNODE)),matmul(kaainv,
-         2                            rhs_temp(2*NNODE+1:2*NNODE+4)))
-         
-            ENERGY(2) = ENERGY(2)
-         1   + 0.5D0*dot_product(stress,strain)*w(kint)*determinant           ! Store the elastic strain energy
+        stress = matmul(D,strain)
+        RHS(1:2*NNODE,1) = RHS(1:2*NNODE,1)
+     1   - matmul(transpose(B(1:4,1:2*NNODE)),stress(1:4))*
+     2                                          w(kint)*determinant
         
-            if (NSVARS>=n_points*4) then   ! Store stress at each integration point (if space was allocated to do so)
-                SVARS(4*kint-3:4*kint) = stress(1:4)
-            endif
-          end do
+        AMATRX(1:2*NNODE,1:2*NNODE) = AMATRX(1:2*NNODE,1:2*NNODE)
+     1  + matmul(transpose(B(1:4,1:2*NNODE)),matmul(D,B(1:4,1:2*NNODE)))
+     2                                             *w(kint)*determinant
+        
+        ENERGY(2) = ENERGY(2)
+     1   + 0.5D0*dot_product(stress,strain)*w(kint)*determinant           ! Store the elastic strain energy
+        
+        if (NSVARS>=n_points*4) then   ! Store stress at each integration point (if space was allocated to do so)
+            SVARS(4*kint-3:4*kint) = stress(1:4)
+        endif
+      end do
       
-          PNEWDT = 1.d0          ! This leaves the timestep unchanged (ABAQUS will use its own algorithm to determine DTIME)
-        !
-        !   Apply distributed loads
-        !
-        !   Distributed loads are specified in the input file using the Un option in the input file.
-        !   n specifies the face number, following the ABAQUS convention
-        !
-        !
-    !       do j = 1,NDLOAD
-    !          
-    !        call abq_facenodes_2D(NNODE,iabs(JDLTYP(j,1)),
-    !     1                                     face_node_list,nfacenodes)
-    !        
-    !        do i = 1,nfacenodes
-    !            face_coords(1:2,i) = coords(1:2,face_node_list(i))
-    !        end do
-    !     
-    !        if (nfacenodes == 3) n_points = 3
-    !        if (nfacenodes == 6) n_points = 4
-    !        if (nfacenodes == 4) n_points = 4
-    !        if (nfacenodes == 8) n_points = 9
-    !        call abq_UEL_1D_integrationpoints(n_points, nfacenodes, xi1, w)
-    !        
-    !        do kint = 1,n_points
-    !            dxdxi1 = matmul(face_coords(1:2,1:nfacenodes),
-    !     1                           dN1dxi(1:nfacenodes))
-    !            !norm(1)=(dxdxi2(2,1)*dxdxi2(3,2))-(dxdxi2(2,2)*dxdxi2(3,1))
-    !            !norm(2)=(dxdxi2(1,1)*dxdxi2(3,2))-(dxdxi2(1,2)*dxdxi2(3,1))
-    !            !norm(3)=(dxdxi2(1,1)*dxdxi2(2,2))-(dxdxi2(1,2)*dxdxi2(2,1))
-    !     
-    !            do i = 1,nfacenodes
-    !                ipoin = 2*face_node_list(i)-1
-    !                RHS(ipoin:ipoin+1,1) = RHS(ipoin:ipoin+1,1)
-    !     1              - N1(1:nfacenodes)*adlmag(j,1)*dxdxi1(1:2)**w(kint)
-    !            end do
-    !        end do
-    !      end do
-      elseif (JTYPE==1) then
-        !     --  Loop over integration points
-          do kint = 1, n_points
-            call abq_UEL_2D_shapefunctions(xi(1:2,kint),NNODE,N,dNdxi)
-            dxdxi = matmul(coords(1:2,1:NNODE),dNdxi(1:NNODE,1:2))
-            call abq_inverse_LU(dxdxi,dxidx,2)
-            determinant = dxdxi(1,1)*dxdxi(2,2)-dxdxi(1,2)*dxdxi(2,1)
-            IF (determinant==0.d0) THEN
-              write(6,*) ' Error in subroutine abq_UEL_inver3d'
-              write(6,*) ' A 2x2 matrix has a zero determinant'
-              stop
-            endif
-            dNdx(1:NNODE,1:2) = matmul(dNdxi(1:NNODE,1:2),dxidx)
-            B = 0.d0
-            B(1,1:2*NNODE-1:2) = dNdx(1:NNODE,1)
-            B(2,2:2*NNODE:2) = dNdx(1:NNODE,2)
-            B(4,1:2*NNODE-1:2) = dNdx(1:NNODE,2)
-            B(4,2:2*NNODE:2) = dNdx(1:NNODE,1)
-        
-            strain = matmul(B(1:4,1:2*NNODE),U(1:2*NNODE))
-        
-            stress = matmul(D,strain)
-            RHS(1:2*NNODE,1) = RHS(1:2*NNODE,1)
-         1   - matmul(transpose(B(1:4,1:2*NNODE)),stress(1:4))*
-         2                                          w(kint)*determinant
-        
-            AMATRX(1:2*NNODE,1:2*NNODE) = AMATRX(1:2*NNODE,1:2*NNODE)
-         1  + matmul(transpose(B(1:4,1:2*NNODE)),matmul(D,B(1:4,1:2*NNODE)))
-         2                                             *w(kint)*determinant
-        
-            ENERGY(2) = ENERGY(2)
-         1   + 0.5D0*dot_product(stress,strain)*w(kint)*determinant           ! Store the elastic strain energy
-        
-            if (NSVARS>=n_points*4) then   ! Store stress at each integration point (if space was allocated to do so)
-                SVARS(4*kint-3:4*kint) = stress(1:4)
-            endif
-          end do
+      PNEWDT = 1.d0          ! This leaves the timestep unchanged (ABAQUS will use its own algorithm to determine DTIME)
+    !
+    !   Apply distributed loads
+    !
+    !   Distributed loads are specified in the input file using the Un option in the input file.
+    !   n specifies the face number, following the ABAQUS convention
+    !
+    !
+!       do j = 1,NDLOAD
+!          
+!        call abq_facenodes_2D(NNODE,iabs(JDLTYP(j,1)),
+!     1                                     face_node_list,nfacenodes)
+!        
+!        do i = 1,nfacenodes
+!            face_coords(1:2,i) = coords(1:2,face_node_list(i))
+!        end do
+!     
+!        if (nfacenodes == 3) n_points = 3
+!        if (nfacenodes == 6) n_points = 4
+!        if (nfacenodes == 4) n_points = 4
+!        if (nfacenodes == 8) n_points = 9
+!        call abq_UEL_1D_integrationpoints(n_points, nfacenodes, xi1, w)
+!        
+!        do kint = 1,n_points
+!            dxdxi1 = matmul(face_coords(1:2,1:nfacenodes),
+!     1                           dN1dxi(1:nfacenodes))
+!            !norm(1)=(dxdxi2(2,1)*dxdxi2(3,2))-(dxdxi2(2,2)*dxdxi2(3,1))
+!            !norm(2)=(dxdxi2(1,1)*dxdxi2(3,2))-(dxdxi2(1,2)*dxdxi2(3,1))
+!            !norm(3)=(dxdxi2(1,1)*dxdxi2(2,2))-(dxdxi2(1,2)*dxdxi2(2,1))
+!     
+!            do i = 1,nfacenodes
+!                ipoin = 2*face_node_list(i)-1
+!                RHS(ipoin:ipoin+1,1) = RHS(ipoin:ipoin+1,1)
+!     1              - N1(1:nfacenodes)*adlmag(j,1)*dxdxi1(1:2)**w(kint)
+!            end do
+!        end do
+!      end do
       
-          PNEWDT = 1.d0          ! This leaves the timestep unchanged (ABAQUS will use its own algorithm to determine DTIME)
-        !
-        !   Apply distributed loads
-        !
-        !   Distributed loads are specified in the input file using the Un option in the input file.
-        !   n specifies the face number, following the ABAQUS convention
-        !
-        !
-    !       do j = 1,NDLOAD
-    !          
-    !        call abq_facenodes_2D(NNODE,iabs(JDLTYP(j,1)),
-    !     1                                     face_node_list,nfacenodes)
-    !        
-    !        do i = 1,nfacenodes
-    !            face_coords(1:2,i) = coords(1:2,face_node_list(i))
-    !        end do
-    !     
-    !        if (nfacenodes == 3) n_points = 3
-    !        if (nfacenodes == 6) n_points = 4
-    !        if (nfacenodes == 4) n_points = 4
-    !        if (nfacenodes == 8) n_points = 9
-    !        call abq_UEL_1D_integrationpoints(n_points, nfacenodes, xi1, w)
-    !        
-    !        do kint = 1,n_points
-    !            dxdxi1 = matmul(face_coords(1:2,1:nfacenodes),
-    !     1                           dN1dxi(1:nfacenodes))
-    !            !norm(1)=(dxdxi2(2,1)*dxdxi2(3,2))-(dxdxi2(2,2)*dxdxi2(3,1))
-    !            !norm(2)=(dxdxi2(1,1)*dxdxi2(3,2))-(dxdxi2(1,2)*dxdxi2(3,1))
-    !            !norm(3)=(dxdxi2(1,1)*dxdxi2(2,2))-(dxdxi2(1,2)*dxdxi2(2,1))
-    !     
-    !            do i = 1,nfacenodes
-    !                ipoin = 2*face_node_list(i)-1
-    !                RHS(ipoin:ipoin+1,1) = RHS(ipoin:ipoin+1,1)
-    !     1              - N1(1:nfacenodes)*adlmag(j,1)*dxdxi1(1:2)**w(kint)
-    !            end do
-    !        end do
-    !      end do
-      endif
       return
       
       END SUBROUTINE UEL
