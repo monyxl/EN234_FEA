@@ -104,7 +104,7 @@
            1, 3, VALUE, 0.d0
            side, 2, VALUE, 0.d0
            left, 1, VALUE, 0.d0
-%           right, 1, HISTORY, dof_history
+           right, 1, HISTORY, dof_history
         END DEGREES OF FREEDOM
 
 
@@ -116,7 +116,7 @@
 %           element set, face #, NORMAL, history name     (applies time dependent pressure normal to element face)
 %           element set, face #, SUBROUTINE, subroutine parameter name
         DISTRIBUTED LOADS
-          end_element, 4, NORMAL,dload_history
+%          end_element, 4, NORMAL,dload_history
         END DISTRIBUTED LOADS
 
 
