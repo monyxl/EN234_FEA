@@ -41,8 +41,8 @@
       ELEMENTS, USER
         PARAMETERS, 8, 48, U1   % The Un activates the ABAQUS UEL
         PROPERTIES
-          1.d0, 200.d0  % Props are mu,K
-          2.d0,2.d0,2.d0,1.d0      % G11, G22, G33, G44
+          1.d0, 200.d0, 2.d0,2.d0,2.d0,1.d0  % Props are mu,K, G11, G22, G33, G44
+
         END PROPERTIES
 
 %     Define element connectivity
@@ -139,8 +139,8 @@
 
           INITIAL TIME STEP, 1.d0        % Test of a comment here
           MAX TIME STEP, 1.d0
-          MIN TIME STEP, 0.001d0
-          MAX NUMBER OF STEPS, 20
+          MIN TIME STEP, 0.0001d0
+          MAX NUMBER OF STEPS, 19
           STOP TIME, 40.d0
           STATE PRINT STEP INTERVAL, 1
           USER PRINT STEP INTERVAL, 1
