@@ -451,8 +451,9 @@ subroutine check_stiffness(element_flag)
                 write(IOW,*) ' Column ',icount, ' node ',n,' DOF ',i
 
                 icount2 = 0
-                do j = 1,element_list(lmn)%n_nodes
-                    do k = 1,node_list(j)%n_dof
+                do m = 1,element_list(lmn)%n_nodes
+                    nn = connectivity(element_list(lmn)%connect_index + m - 1)
+                    do k = 1,node_list(nn)%n_dof
                         icount2 = icount2 + 1
                         write(IOW,1000) icount2,j,k,element_stiffness(icount2,icount),numerical_stiffness(icount2,icount)
 1000                    format( ' Row ',i4,' node ',i4,' DOF ',i4,' Stiffness ',d15.5,' Numerical deriv ',d15.5 )

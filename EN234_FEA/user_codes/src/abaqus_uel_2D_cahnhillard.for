@@ -6,9 +6,9 @@
 !    The example implements a standard fully integrated 3D linear elastic continuum element
 !
 !    The file also contains the following subrouines:
-!          abq_UEL_2D_integrationpoints           - defines integration points for 2D continuum elements
-!          abq_UEL_2D_shapefunctions              - defines shape functions for 2D continuum elements
-!          abq_UEL_1D_integrationpoints(n_points, n_nodes, xi, w)  = defines integration points for 1D line integral
+!          abq_UEL_2D_CH_integrationpoints           - defines integration points for 2D continuum elements
+!          abq_UEL_2D_CH_shapefunctions              - defines shape functions for 2D continuum elements
+!          abq_UEL_1D_CH_integrationpoints(n_points, n_nodes, xi, w)  = defines integration points for 1D line integral
 !=========================== ABAQUS format user element subroutine ===================
 
       SUBROUTINE UEL(RHS,AMATRX,SVARS,ENERGY,NDOFEL,NRHS,NSVARS,
@@ -103,7 +103,7 @@
       double precision  ::  N(9)                              ! 2D shape functions for disp
       double precision  ::  N2(9)                             ! 2D shape functions for concentration
       double precision  ::  dNdxi(9,2)                        ! 2D shape function derivatives for disp
-      double precision  ::  dNdxi2(9,2)                       ! 2D shape function derivatives for concentration
+      double precision  ::  dN2dxi(9,2)                       ! 2D shape function derivatives for concentration
       double precision  ::  dNdx(9,2)                         ! Spatial derivatives for disp
       double precision  ::  dN2dx(9,2)                      ! Spatial derivatives for concentration
       double precision  ::  dxdxi(2,2)                        ! Derivative of spatial coords wrt normalized coords
@@ -137,6 +137,8 @@
       double precision  ::  D(9,9)                            ! stress=D*(strain)  (NOTE FACTOR OF 2 in shear strain)
       double precision  ::  q(9)                              ! q vector
       double precision  ::  F, dFdc                           ! Free energy and its derivatives
+      double precision  ::  sol(9), dsol(9)                   ! generalized disp and disp inc
+      double precision  ::  diag(4)                           ! diagonal vec [1 1 1 0]
       
 
     !
@@ -158,8 +160,8 @@
       NNODE_tot = NNODE + NNODE_2
     ! Write your code for a 2D element below
       
-      call abq_UEL_2D_integrationpoints(n_points, NNODE, xi, w)
-      call abq_UEL_2D_integrationpoints(n_points, NNODE_2, xi2, w2)
+      call abq_UEL_2D_CH_integrationpoints(n_points, NNODE, xi, w)
+      call abq_UEL_2D_CH_integrationpoints(n_points, NNODE_2, xi2, w2)
       
       !if (MLVARX<2*NNODE) then
       !  write(6,*) ' Error in abaqus UEL '
@@ -191,6 +193,21 @@
       DEL(2,2) = D11
       DEL(4,4) = D44
       
+      D(1:2,1:2) = DEL(1:2,1:2)
+      D(3,3) = DEL(4,4)
+      D(1,5) = -Omega*(DEL(1,1)+DEL(1,2)+DEL(1,3))/3.d0
+      D(2,5) = -Omega*(DEL(2,1)+DEL(2,2)+DEL(2,3))/3.d0
+      D(4,1) = -Omega*(DEL(1,1)+DEL(1,2)+DEL(1,3))/3.d0
+      D(4,2) = -Omega*(DEL(2,1)+DEL(2,2)+DEL(2,3))/3.d0
+      D(4,4) = 1.d0
+      D(4,5) = 0.d0 ! WILL CALCULATE LATER
+      D(5,5) = 1.d0/DTIME
+      D(6,8) = -Kappa
+      D(7,9) = -Kappa
+      D(8,6) = Theta*Diff
+      D(9,7) = Theta*Diff
+      
+      
       ENERGY(1:8) = 0.d0
       det = 0.d0
       det2 = 0.d0
@@ -198,9 +215,9 @@
       !     --  Loop over integration points
       do kint = 1, n_points
       !     --  Loop over disp integration points
-        call abq_UEL_2D_shapefunctions(xi(1:2,kint),NNODE,N,dNdxi)
+        call abq_UEL_2D_CH_shapefunctions(xi(1:2,kint),NNODE,N,dNdxi)
         dxdxi = matmul(coords(1:2,1:NNODE),dNdxi(1:NNODE,1:2))
-        call abq_inverse_LU(dxdxi,dxidx,2)
+        call abq_inverse_LU_CH(dxdxi,dxidx,2)
         det = dxdxi(1,1)*dxdxi(2,2)-dxdxi(1,2)*dxdxi(2,1)
         IF (det==0.d0) THEN
           write(6,*) ' Error in disp'
@@ -209,9 +226,10 @@
         endif
         dNdx(1:NNODE,1:2) = matmul(dNdxi(1:NNODE,1:2),dxidx)
       !     --  Loop over concentration integration points
-        call abq_UEL_2D_shapefunctions(xi2(1:2,kint),NNODE_2,N2,dN2dxi)
+        call abq_UEL_2D_CH_shapefunctions(xi2(1:2,kint),NNODE_2,N2,
+     1                                                       dN2dxi)
         dxdxi2 = matmul(coords(1:2,1:NNODE_2),dN2dxi(1:NNODE_2,1:2))
-        call abq_inverse_LU(dxdxi2,dxidx2,2)
+        call abq_inverse_LU_CH(dxdxi2,dxidx2,2)
         det2 = dxdxi2(1,1)*dxdxi2(2,2)-dxdxi2(1,2)*dxdxi2(2,1)
         IF (det2==0.d0) THEN
           write(6,*) ' Error in concentration'
@@ -228,15 +246,15 @@
         
         ! First line
         B(1,1:4*NNODE_2-3:4) = dNdx(1:NNODE_2,1)
-        B(1,4*NNODE_2+1:2*NNODE_tot-1) = dNdx(NNODE_2+1:NNODE,1)
+        B(1,4*NNODE_2+1:2*NNODE_tot-1:2) = dNdx(NNODE_2+1:NNODE,1)
         !Second line
         B(2,2:4*NNODE_2-2:4) = dNdx(1:NNODE_2,2)
-        B(2,4*NNODE_2+2:2*NNODE_tot) = dNdx(NNODE_2+1:NNODE,2)
+        B(2,4*NNODE_2+2:2*NNODE_tot:2) = dNdx(NNODE_2+1:NNODE,2)
         !Third line
         B(3,1:4*NNODE_2-3:4) = dNdx(1:NNODE_2,2)
-        B(3,4*NNODE_2+1:2*NNODE_tot-1) = dNdx(NNODE_2+1:NNODE,2)
+        B(3,4*NNODE_2+1:2*NNODE_tot-1:2) = dNdx(NNODE_2+1:NNODE,2)
         B(3,2:4*NNODE_2-2:4) = dNdx(1:NNODE_2,1)
-        B(3,4*NNODE_2+2:2*NNODE_tot) = dNdx(NNODE_2+1:NNODE,1)
+        B(3,4*NNODE_2+2:2*NNODE_tot:2) = dNdx(NNODE_2+1:NNODE,1)
         ! Fourth line
         B(4,3:4*NNODE_2-1:4) = N2(1:NNODE_2)
         ! Fifth line
@@ -250,17 +268,61 @@
         ! Nineth line
         B(9,4:4*NNODE_2:4) = dNdx(1:NNODE_2,2)
         
+        sol = 0.d0
+        dsol = 0.d0
+        sol(1:9) = matmul(B(1:9,1:24),U(1:24))        ! SOL(5) is concentration
+        dsol(1:9) = matmul(B(1:9,1:24),DU(1:24,1))    ! dSOL(5) is concentration inc
         
-        strain = matmul(B(1:4,1:2*NNODE),U(1:2*NNODE))
+        ! CALCULATE strain and stress
+        strain = 0.d0
+        stress = 0.d0
+        diag = 0.d0
+        diag(1:3) = 1.d0
+        strain(1:2) = sol(1:2)
+        strain(4) = sol(3)
+        stress(1:4) = matmul(DEL(1:4,1:4)
+     1        ,(strain(1:4)-diag(1:4)*Omega*sol(5)/3.d0))
         
-        stress = matmul(D,strain)
-        RHS(1:2*NNODE,1) = RHS(1:2*NNODE,1)
-     1   - matmul(transpose(B(1:4,1:2*NNODE)),stress(1:4))*
+        ! CALCULATE dFdc
+    !   dFdc = Wgibbs*(12.d0*(sol(5)+dsol(5))**2.d0
+    !1         -12.d0*(sol(5)+dsol(5))+2.d0)
+        dFdc = Wgibbs*(12.d0*(sol(5))**2.d0
+     1         -12.d0*(sol(5))+2.d0)
+        ! CALCULATE F(C+DC)
+    !   F = 2.d0*Wgibbs*(sol(5)+dsol(5))*(sol(5)+dsol(5)-1.d0)
+    !1      *(2.d0*(sol(5)+dsol(5))-1.d0)
+        
+        F = 2.d0*Wgibbs*(sol(5))*(sol(5)-1.d0)
+     1      *(2.d0*(sol(5))-1.d0)
+        
+        ! CALCULATE q vector
+        q = 0.d0
+        q(1:2) = stress(1:2)
+        q(3) = stress(4)
+        q(4) = sol(4)-F-Omega*
+     1              (stress(1)+stress(2)+stress(3))/3.d0
+        q(5) = dsol(5)/DTIME
+        !q(6) = -Kappa*(sol(8)+dsol(8))
+        !q(7) = -Kappa*(sol(9)+dsol(9))
+        !q(8) = Diff*(sol(6)+Theta*dsol(6))
+        !q(9) = Diff*(sol(7)+Theta*dsol(7))
+        q(6) = -Kappa*(sol(8))
+        q(7) = -Kappa*(sol(9))
+        q(8) = Diff*(sol(6)+(Theta-1.d0)*dsol(6))
+        q(9) = Diff*(sol(7)+(Theta-1.d0)*dsol(7))
+        ! CALCULATE  D(4,5)
+        D(4,5) = -dFdc + (Omega**2.d0)*(D11+D11+D44+6.d0*D12)/9.d0
+        
+        
+        ! CALCULATE  RHS
+        RHS(1:2*NNODE_tot,1) = RHS(1:2*NNODE_tot,1)
+     1   - matmul(transpose(B(1:9,1:2*NNODE_tot)),q(1:9))*
      2                                          w(kint)*det
         
-        AMATRX(1:2*NNODE,1:2*NNODE) = AMATRX(1:2*NNODE,1:2*NNODE)
-     1  + matmul(transpose(B(1:4,1:2*NNODE)),matmul(D,B(1:4,1:2*NNODE)))
-     2                                             *w(kint)*det
+        AMATRX(1:2*NNODE_tot,1:2*NNODE_tot) = 
+     1  AMATRX(1:2*NNODE_tot,1:2*NNODE_tot)
+     2    + matmul(transpose(B(1:9,1:2*NNODE_tot)),
+     3      matmul(D(1:9,1:9),B(1:9,1:2*NNODE_tot)))*w(kint)*det
         
         ENERGY(2) = ENERGY(2)
      1   + 0.5D0*dot_product(stress,strain)*w(kint)*det           ! Store the elastic strain energy
@@ -268,6 +330,7 @@
         if (NSVARS>=n_points*4) then   ! Store stress at each integration point (if space was allocated to do so)
             SVARS(4*kint-3:4*kint) = stress(1:4)
         endif
+        
       end do
       
       PNEWDT = 1.d0          ! This leaves the timestep unchanged (ABAQUS will use its own algorithm to determine DTIME)
@@ -280,7 +343,7 @@
     !
 !       do j = 1,NDLOAD
 !          
-!        call abq_facenodes_2D(NNODE,iabs(JDLTYP(j,1)),
+!        call abq_facenodes_2D_CH(NNODE,iabs(JDLTYP(j,1)),
 !     1                                     face_node_list,nfacenodes)
 !        
 !        do i = 1,nfacenodes
@@ -291,7 +354,7 @@
 !        if (nfacenodes == 6) n_points = 4
 !        if (nfacenodes == 4) n_points = 4
 !        if (nfacenodes == 8) n_points = 9
-!        call abq_UEL_1D_integrationpoints(n_points, nfacenodes, xi1, w)
+!        call abq_UEL_1D_CH_integrationpoints(n_points, nfacenodes, xi1, w)
 !        
 !        do kint = 1,n_points
 !            dxdxi1 = matmul(face_coords(1:2,1:nfacenodes),
@@ -314,7 +377,8 @@
 
 
 
-      subroutine abq_UEL_2D_integrationpoints(n_points, n_nodes, xi, w)
+      subroutine abq_UEL_2D_CH_integrationpoints(n_points, n_nodes, 
+     1                                                       xi, w)
 
       implicit none
       integer, intent(in) :: n_points
@@ -448,12 +512,12 @@
 
       return
 
-      end subroutine abq_UEL_2D_integrationpoints
+      end subroutine abq_UEL_2D_CH_integrationpoints
 
 
 
 
-      subroutine abq_UEL_2D_shapefunctions(xi,n_nodes,f,df)
+      subroutine abq_UEL_2D_CH_shapefunctions(xi,n_nodes,f,df)
 
       implicit none
       integer, intent(in) :: n_nodes
@@ -607,10 +671,11 @@
                 df(9,2) = g3*dh3
             end if
 
-      end subroutine abq_UEL_2D_shapefunctions
+      end subroutine abq_UEL_2D_CH_shapefunctions
 
 
-      subroutine abq_UEL_1D_integrationpoints(n_points, n_nodes, xi, w)
+      subroutine abq_UEL_1D_CH_integrationpoints(n_points, n_nodes, 
+     1                                                        xi, w)
 
 
       implicit none
@@ -678,7 +743,8 @@
             w(6) = .1713244923791703D+00
             return
         case DEFAULT
-            write(6,*)'Error in subroutine abq_UEL_1D_integrationpoints'
+            write(6,*)'Error in subroutine 
+     1                    abq_UEL_1D_CH_integrationpoints'
             write(6,*) ' Invalid number of integration points for 1D'
             write(6,*) ' n_points must be between 1 and 6'
             stop
@@ -690,11 +756,11 @@
 
 
 
-      end subroutine ABQ_UEL_1D_integrationpoints
+      end subroutine abq_UEL_1D_CH_integrationpoints
 
 
 
-      subroutine abq_facenodes_2D(nelnodes,face,list,nfacenodes)
+      subroutine abq_facenodes_2D_CH(nelnodes,face,list,nfacenodes)
 
       implicit none
 
@@ -737,9 +803,9 @@
         if (face==4) list(1:3) = (/7,1,4/)
       endif
 
-      end subroutine abq_facenodes_2d
+      end subroutine abq_facenodes_2D_CH
 
-      subroutine abq_inverse_LU(Ain,A_inverse,n)  ! Compute the inverse of an arbitrary matrix by LU decomposition
+      subroutine abq_inverse_LU_CH(Ain,A_inverse,n)  ! Compute the inverse of an arbitrary matrix by LU decomposition
 
         implicit none
 
@@ -784,6 +850,6 @@
             b(k)=0.d0
         end do
 
-      end subroutine abq_inverse_LU
+      end subroutine abq_inverse_LU_CH
 
 
