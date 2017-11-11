@@ -93,7 +93,7 @@
     !
     ! Local Variables
       integer      :: i,j,n_points,kint, nfacenodes, ipoin, ksize
-      integer      :: NNODE_2
+      integer      :: NNODE_2, NNODE_tot
       integer      :: face_node_list(3)                       ! List of nodes on an element face
     !
       double precision  ::  xi(2,9)                           ! Area integration points for disp
@@ -130,7 +130,7 @@
       double precision  ::  kua(18,4)                         ! Upper quadrant of stiffness
       double precision  ::  alpha(4)                          ! Internal DOF for incompatible mode element
       double precision  ::  Utemp(12)                         ! Internal DOF for incompatible mode element
-      double precision  ::  dxidx(2,2),  det, det0            ! Jacobian inverse and determinant
+      double precision  ::  dxidx(2,2),  det                  ! Jacobian inverse and determinant
       double precision  ::  dxidx2(2,2), det2                 ! Jacobian inverse and determinant
       double precision  ::  E, xnu, D44, D11, D12             ! Material properties
       double precision  ::  Omega, Wgibbs, Kappa, Diff, Theta      ! Material properties
@@ -155,7 +155,7 @@
       if (NNODE == 9) n_points = 9                ! Quadratic rect
       
       NNODE_2 = 4                                 ! int pts for concentration
-
+      NNODE_tot = NNODE + NNODE_2
     ! Write your code for a 2D element below
       
       call abq_UEL_2D_integrationpoints(n_points, NNODE, xi, w)
@@ -197,33 +197,59 @@
       
       !     --  Loop over integration points
       do kint = 1, n_points
+      !     --  Loop over disp integration points
         call abq_UEL_2D_shapefunctions(xi(1:2,kint),NNODE,N,dNdxi)
         dxdxi = matmul(coords(1:2,1:NNODE),dNdxi(1:NNODE,1:2))
         call abq_inverse_LU(dxdxi,dxidx,2)
         det = dxdxi(1,1)*dxdxi(2,2)-dxdxi(1,2)*dxdxi(2,1)
         IF (det==0.d0) THEN
-          write(6,*) ' Error in subroutine abq_UEL_inver3d'
+          write(6,*) ' Error in disp'
           write(6,*) ' A 2x2 matrix has a zero determinant'
           stop
         endif
         dNdx(1:NNODE,1:2) = matmul(dNdxi(1:NNODE,1:2),dxidx)
-        
+      !     --  Loop over concentration integration points
         call abq_UEL_2D_shapefunctions(xi2(1:2,kint),NNODE_2,N2,dN2dxi)
-        dxdxi2 = matmul(coords(1:2,1:NNODE),dNdxi(1:NNODE,1:2))
-        call abq_inverse_LU(dxdxi,dxidx,2)
-        det = dxdxi(1,1)*dxdxi(2,2)-dxdxi(1,2)*dxdxi(2,1)
-        IF (det==0.d0) THEN
-          write(6,*) ' Error in subroutine abq_UEL_inver3d'
+        dxdxi2 = matmul(coords(1:2,1:NNODE_2),dN2dxi(1:NNODE_2,1:2))
+        call abq_inverse_LU(dxdxi2,dxidx2,2)
+        det2 = dxdxi2(1,1)*dxdxi2(2,2)-dxdxi2(1,2)*dxdxi2(2,1)
+        IF (det2==0.d0) THEN
+          write(6,*) ' Error in concentration'
           write(6,*) ' A 2x2 matrix has a zero determinant'
           stop
         endif
-        dNdx(1:NNODE,1:2) = matmul(dNdxi(1:NNODE,1:2),dxidx)
+        dN2dx(1:NNODE_2,1:2) = matmul(dN2dxi(1:NNODE_2,1:2),dxidx2)
         
         B = 0.d0
-        B(1,1:2*NNODE-1:2) = dNdx(1:NNODE,1)
-        B(2,2:2*NNODE:2) = dNdx(1:NNODE,2)
-        B(4,1:2*NNODE-1:2) = dNdx(1:NNODE,2)
-        B(4,2:2*NNODE:2) = dNdx(1:NNODE,1)
+        !B(1,1:2*NNODE-1:2) = dNdx(1:NNODE,1)
+        !B(2,2:2*NNODE:2) = dNdx(1:NNODE,2)
+        !B(4,1:2*NNODE-1:2) = dNdx(1:NNODE,2)
+        !B(4,2:2*NNODE:2) = dNdx(1:NNODE,1)
+        
+        ! First line
+        B(1,1:4*NNODE_2-3:4) = dNdx(1:NNODE_2,1)
+        B(1,4*NNODE_2+1:2*NNODE_tot-1) = dNdx(NNODE_2+1:NNODE,1)
+        !Second line
+        B(2,2:4*NNODE_2-2:4) = dNdx(1:NNODE_2,2)
+        B(2,4*NNODE_2+2:2*NNODE_tot) = dNdx(NNODE_2+1:NNODE,2)
+        !Third line
+        B(3,1:4*NNODE_2-3:4) = dNdx(1:NNODE_2,2)
+        B(3,4*NNODE_2+1:2*NNODE_tot-1) = dNdx(NNODE_2+1:NNODE,2)
+        B(3,2:4*NNODE_2-2:4) = dNdx(1:NNODE_2,1)
+        B(3,4*NNODE_2+2:2*NNODE_tot) = dNdx(NNODE_2+1:NNODE,1)
+        ! Fourth line
+        B(4,3:4*NNODE_2-1:4) = N2(1:NNODE_2)
+        ! Fifth line
+        B(5,4:4*NNODE_2:4) = N2(1:NNODE_2)
+        ! Sixth line
+        B(6,3:4*NNODE_2-1:4) = dNdx(1:NNODE_2,1)
+        ! Seventh line
+        B(7,3:4*NNODE_2-1:4) = dNdx(1:NNODE_2,2)
+        ! Eighth line
+        B(8,4:4*NNODE_2:4) = dNdx(1:NNODE_2,1)
+        ! Nineth line
+        B(9,4:4*NNODE_2:4) = dNdx(1:NNODE_2,2)
+        
         
         strain = matmul(B(1:4,1:2*NNODE),U(1:2*NNODE))
         
