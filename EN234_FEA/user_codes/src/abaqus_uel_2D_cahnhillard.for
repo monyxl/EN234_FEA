@@ -93,7 +93,7 @@
     !
     ! Local Variables
       integer      :: i,j,n_points,kint, nfacenodes, ipoin, ksize
-      integer      :: NNODE_2, NNODE_tot
+      integer      :: n_points_2, n_points_tot,NNODE_2, NNODE_tot
       integer      :: face_node_list(3)                       ! List of nodes on an element face
     !
       double precision  ::  xi(2,9)                           ! Area integration points for disp
@@ -138,6 +138,7 @@
       double precision  ::  q(9)                              ! q vector
       double precision  ::  F, dFdc                           ! Free energy and its derivatives
       double precision  ::  sol(9), dsol(9)                   ! generalized disp and disp inc
+      double precision  ::  c                                 ! concentration
       double precision  ::  diag(4)                           ! diagonal vec [1 1 1 0]
       
 
@@ -157,7 +158,9 @@
       if (NNODE == 9) n_points = 9                ! Quadratic rect
       
       NNODE_2 = 4                                 ! int pts for concentration
+      n_points = 4                              ! # OF int pts for concentration
       NNODE_tot = NNODE + NNODE_2
+      
     ! Write your code for a 2D element below
       
       call abq_UEL_2D_CH_integrationpoints(n_points, NNODE, xi, w)
@@ -185,8 +188,8 @@
       Theta = PROPS(7)
       
       D44 = 0.5D0*E/(1+xnu)
-      D11 = (1.D0-xnu)*E/( (1+xnu)*(1-2.D0*xnu) )
-      D12 = xnu*E/( (1+xnu)*(1-2.D0*xnu) )
+      D11 = (1.D0-xnu)*E/( (1.D0+xnu)*(1.D0-2.D0*xnu) )
+      D12 = xnu*E/( (1.D0+xnu)*(1.D0-2.D0*xnu) )
       
       DEL(1:3,1:3) = D12
       DEL(1,1) = D11
@@ -237,6 +240,7 @@
           stop
         endif
         dN2dx(1:NNODE_2,1:2) = matmul(dN2dxi(1:NNODE_2,1:2),dxidx2)
+        !dN2dx(1:NNODE_2,1:2) = matmul(dN2dxi(1:NNODE_2,1:2),dxidx)
         
         B = 0.d0
         !B(1,1:2*NNODE-1:2) = dNdx(1:NNODE,1)
@@ -260,18 +264,20 @@
         ! Fifth line
         B(5,4:4*NNODE_2:4) = N2(1:NNODE_2)
         ! Sixth line
-        B(6,3:4*NNODE_2-1:4) = dNdx(1:NNODE_2,1)
+        B(6,3:4*NNODE_2-1:4) = dN2dx(1:NNODE_2,1)
         ! Seventh line
-        B(7,3:4*NNODE_2-1:4) = dNdx(1:NNODE_2,2)
+        B(7,3:4*NNODE_2-1:4) = dN2dx(1:NNODE_2,2)
         ! Eighth line
-        B(8,4:4*NNODE_2:4) = dNdx(1:NNODE_2,1)
+        B(8,4:4*NNODE_2:4) = dN2dx(1:NNODE_2,1)
         ! Nineth line
-        B(9,4:4*NNODE_2:4) = dNdx(1:NNODE_2,2)
+        B(9,4:4*NNODE_2:4) = dN2dx(1:NNODE_2,2)
         
         sol = 0.d0
         dsol = 0.d0
         sol(1:9) = matmul(B(1:9,1:24),U(1:24))        ! SOL(5) is concentration
         dsol(1:9) = matmul(B(1:9,1:24),DU(1:24,1))    ! dSOL(5) is concentration inc
+        
+        c = sol(5)
         
         ! CALCULATE strain and stress
         strain = 0.d0
@@ -281,26 +287,26 @@
         strain(1:2) = sol(1:2)
         strain(4) = sol(3)
         stress(1:4) = matmul(DEL(1:4,1:4)
-     1        ,(strain(1:4)-diag(1:4)*Omega*sol(5)/3.d0))
+     1        ,(strain(1:4)-diag(1:4)*Omega*c/3.d0))
         
         ! CALCULATE dFdc
-    !   dFdc = Wgibbs*(12.d0*(sol(5)+dsol(5))**2.d0
-    !1         -12.d0*(sol(5)+dsol(5))+2.d0)
-        dFdc = Wgibbs*(12.d0*(sol(5))**2.d0
-     1         -12.d0*(sol(5))+2.d0)
+    !   dFdc = Wgibbs*(12.d0*(c+dsol(5))**2.d0
+    !1         -12.d0*(c+dsol(5))+2.d0)
+        dFdc = Wgibbs*(12.d0*(c)**2.d0
+     1         -12.d0*(c)+2.d0)
         ! CALCULATE F(C+DC)
-    !   F = 2.d0*Wgibbs*(sol(5)+dsol(5))*(sol(5)+dsol(5)-1.d0)
-    !1      *(2.d0*(sol(5)+dsol(5))-1.d0)
+    !   F = 2.d0*Wgibbs*(c+dsol(5))*(c+dsol(5)-1.d0)
+    !1      *(2.d0*(c+dsol(5))-1.d0)
         
-        F = 2.d0*Wgibbs*(sol(5))*(sol(5)-1.d0)
-     1      *(2.d0*(sol(5))-1.d0)
+        F = 2.d0*Wgibbs*(c)*(c-1.d0)
+     1      *(2.d0*(c)-1.d0)
         
         ! CALCULATE q vector
         q = 0.d0
         q(1:2) = stress(1:2)
         q(3) = stress(4)
         q(4) = sol(4)-F-Omega*
-     1              (stress(1)+stress(2)+stress(3))/3.d0
+     1              sum(stress(1:3))/3.d0
         q(5) = dsol(5)/DTIME
         !q(6) = -Kappa*(sol(8)+dsol(8))
         !q(7) = -Kappa*(sol(9)+dsol(9))
@@ -311,7 +317,7 @@
         q(8) = Diff*(sol(6)+(Theta-1.d0)*dsol(6))
         q(9) = Diff*(sol(7)+(Theta-1.d0)*dsol(7))
         ! CALCULATE  D(4,5)
-        D(4,5) = -dFdc + (Omega**2.d0)*(D11+D11+D44+6.d0*D12)/9.d0
+        D(4,5) = -dFdc + (Omega**2.d0)*(sum(DEL(1:3,1:3)))/9.d0
         
         
         ! CALCULATE  RHS
@@ -327,6 +333,7 @@
         ENERGY(2) = ENERGY(2)
      1   + 0.5D0*dot_product(stress,strain)*w(kint)*det           ! Store the elastic strain energy
         
+        !stress(4)=1.d0
         if (NSVARS>=n_points*4) then   ! Store stress at each integration point (if space was allocated to do so)
             SVARS(4*kint-3:4*kint) = stress(1:4)
         endif

@@ -129,7 +129,7 @@
           INITIAL TIME STEP, 1.d-03       
           MAX TIME STEP, 1.d-03
           MIN TIME STEP, 0.00001d0
-          MAX NUMBER OF STEPS, 3
+          MAX NUMBER OF STEPS, 10
           STOP TIME, 10.d0
           USER PRINT STEP INTERVAL, 1
 
