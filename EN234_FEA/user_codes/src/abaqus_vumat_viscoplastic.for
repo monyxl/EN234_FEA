@@ -122,8 +122,9 @@
       do k = 1,nblock
 
         eplas = stateOld(k,1)
-        deplas = stateOld(k,3)
         ta = stateOld(k,2)
+        deplas = stateOld(k,3)
+        
 
         dedev(1:ndir) = strainInc(k,1:ndir)
      1                      - sum(strainInc(k,1:ndir))/3.d0
@@ -168,21 +169,21 @@
          s0 = Y*(1.d0+(eplas+deplas)/e0)**m
          
          c1 = s0*(eplas+deplas)/S + H*C +log(deplas/dt/edot0)
-  !       c2 = s0*(eplas+deplas*1.0000001)/S + H*C +
-  !   &      log(deplas*1.0000001/dt/edot0)
+         c2 = s0*(eplas+deplas*1.0000001)/S + H*C +
+     &      log(deplas*1.0000001/dt/edot0)
          
          f = sestar/S - 1.5d0*E*deplas/(1.d0+xnu) - c1
-         !ff = sestar/S - 1.5d0*E*deplas*1.0000001/(1.d0+xnu) - c2
-         dfde = -c1*( 1.d0/(n*(e0+eplas+deplas)) + 1.d0/(m*deplas) )
-     &                                            - 1.5d0*E/(1.d0+xnu)
-         !dfde = (ff-f)/(1.0000001*deplas-deplas)
-         dfde = -1.5d0*E/(1.d0+xnu)/S- 1.d0/deplas
-     &         -s0*(m*(eplas+deplas/(e0+eplas+deplas))+1)/S
-     &         +(1.d0-C)*Alpha*((tadta/td)**(Alpha-1.d0))
-     &         *ta*(1-1.d0/pre+0.5*(1.d0/pre)**2)
-     &   /(pre*(1.d0+pre*(1-1.d0/pre+0.5*(1.d0/pre)**2))*deplas)/td
+         ff = sestar/S - 1.5d0*E*deplas*1.0000001/(1.d0+xnu) - c2
+    !    dfde = -c1*( 1.d0/(n*(e0+eplas+deplas)) + 1.d0/(m*deplas) )
+    !&                                            - 1.5d0*E/(1.d0+xnu)
+         dfde = (ff-f)/(1.0000001*deplas-deplas)
+    !    dfde = -1.5d0*E/(1.d0+xnu)/S- 1.d0/deplas
+    !&         -s0*(m*(eplas+deplas/(e0+eplas+deplas))+1)/S
+    !&         +(1.d0-C)*Alpha*((tadta/td)**(Alpha-1.d0))
+    !&         *ta*(1-1.d0/pre+0.5*(1.d0/pre)**2)
+    !&   /(pre*(1.d0+pre*(1-1.d0/pre+0.5*(1.d0/pre)**2))*deplas)/td
          
-         !ta_new = ta+dt-ta*deplas/Omega
+         ta_new = ta+dt-ta*deplas/Omega
          deplas_new = deplas - f/dfde
       
          if (deplas_new<0.d0) then
@@ -206,7 +207,8 @@
      1              stressNew(k,1:ndir) + skkstar/3.d0
 
         stateNew(k,1) = eplas + deplas
-        stateNew(k,2) = deplas
+        stateNew(k,2) = ta_new
+        stateNew(k,3) = deplas
 
       end do
 
