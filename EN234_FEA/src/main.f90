@@ -114,13 +114,13 @@ program en234fea
    !infil = 'input_files/Abaqus_uel_phasefield_coarse.in'
    !outfil = 'Output_files/Abaqus_uel_phasefield_coarse.out'
 
-   infil = 'input_files/Abaqus_uel_phasefield_fine.in'
-   outfil = 'Output_files/Abaqus_uel_phasefield_fine.out'
+   !infil = 'input_files/Abaqus_uel_phasefield_fine.in'
+   !outfil = 'Output_files/Abaqus_uel_phasefield_fine.out'
 
 
 !   Homework 9 - McCormick model with 1 element
-!   infil = 'input_files/Abaqus_vumat_McCormick.in'
-!   outfil = 'Output_files/Abaqus_vumat_McCormick.out'
+   infil = 'input_files/Abaqus_vumat_McCormick.in'
+   outfil = 'Output_files/Abaqus_vumat_McCormick.out'
 
 
 
