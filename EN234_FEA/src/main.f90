@@ -125,11 +125,16 @@ program en234fea
 
 
 !   Homework 10 - Continuum beam element solution to end loaded cantilever beam
-   infil = 'input_files/Abaqus_uel_continuum_beam.in'
-   outfil = 'Output_files/Abaqus_uel_continuum_beam.out'
+   !infil = 'input_files/Abaqus_uel_continuum_beam.in'
+   !outfil = 'Output_files/Abaqus_uel_continuum_beam.out'
 
    !infil = 'Input_files/Abaqus_uel_holeplate_3d.in'
    !outfil = 'Output_Files/Abaqus_uel_holeplate_3d.out'
+  
+  
+!   Final Project: Viscoelastic umat for SLS solid
+  infil = 'input_files/Abaqus_umat_viscoelastic_3d_ver2.in'
+  outfil = 'Output_files/Abaqus_umat_viscoelastic_3d_ver2.out'
    
    infil = trim(root_directory)//trim(infil)
    outfil = trim(root_directory)//trim(outfil)

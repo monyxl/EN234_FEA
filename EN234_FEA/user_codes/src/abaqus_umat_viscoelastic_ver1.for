@@ -3,7 +3,7 @@
 !
 !
 
-      SUBROUTINE UMAT_PE(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,
+      SUBROUTINE UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,
      1 RPL,DDSDDT,DRPLDE,DRPLDT,
      2 STRAN,DSTRAN,TIME,DTIME,TEMP,DTEMP,PREDEF,DPRED,CMNAME,
      3 NDI,NSHR,NTENS,NSTATV,PROPS,NPROPS,COORDS,DROT,PNEWDT,
@@ -252,30 +252,111 @@
 !     Local variables
 
       !double precision :: edev(6)
-      double precision :: evol
+      !double precision :: evol
       !double precision :: se,ee
-      double precision :: G,nu,e0,pt,K,Kb   !dsedee,Et,Es
-
+      !double precision :: G,nu,e0,pt,K,Kb   !dsedee,Et,Es
+      
+      
+      double precision :: KE, GE, KMe, GMe, GV, KV
+      double precision :: lambda1, lambda2, mu1, mu2
+      double precision :: phi1, phi2, psi1, psi2
+      double precision :: omega1, omega2, zeta1, zeta2
+      double precision :: A, B, C, D, F, G, H
+      double precision, dimension(NTENS,NTENS) :: ones, diag
+      double precision, dimension(NTENS,NTENS) :: DDSDE
+      double precision, dimension(NTENS,NTENS) :: DDSDS
+      double precision, dimension(NTENS) :: SIGold
+      
+      
       integer :: j
 
-       G = PROPS(1)
-       nu = PROPS(2)
-       e0 = PROPS(3)
-       pt = PROPS(4)
-       K = pt*(1.d0-2.d0*nu)/(1.d0+nu)*(1.d0+e0)
-
-       evol = sum(STRAN(1:3)+DSTRAN(1:3))
-       !edev(1:3) = STRAN(1:3)+DSTRAN(1:3) - evol/3.d0
-       !edev(4:6) = 0.5d0*(STRAN(4:6)+DSTRAN(4:6))
+       KE = PROPS(1)
+       GE = PROPS(2)
+       KMe = PROPS(3)
+       GMe = PROPS(4)
+       GV = PROPS(5)
+       !KV = PROPS(6) infinity
        
-       Kb=pt/3.d0*(1.d0+e0)/K*exp(-(1.d0+e0)/K*evol)-2.d0*G/3.d0
-       DDSDDE(1:6,1:6) = 0.d0
-       forall(j=1:3) DDSDDE(j,j) = DDSDDE(j,j) + 2.d0*G
-       forall(j=4:6) DDSDDE(j,j) = DDSDDE(j,j) + G
-       DDSDDE(1:3,1:3) =  DDSDDE(1:3,1:3) + Kb
+       
+       !lambda1 = (-GE/GV+KE/KV)/3.d0
+       lambda1 = (-GE/GV+0.d0)/3.d0
+       lambda2 = (-GE/GMe+KE/KMe)/3.d0
+       mu1 = GE/(2.d0*GV)
+       mu2 = (1.d0+GE/GMe)/2.d0
+       phi1 = -1.d0/(6.d0*GV)!+1.d0/(9.d0*KV)
+       phi2 = -1.d0/(6.d0*GMe) + 1.d0/(9.d0*KMe)
+       psi1 = 1.d0/(4.d0*GV)
+       psi2 = 1.d0/(4.d0*GMe)
+       !omega1 = KE/KV
+       omega1 = 0.d0
+       omega2 = 1.d0 + KE/KMe
+       !zeta1 = 1.d0/(3.d0*KV)
+       zeta1 = 0.d0
+       zeta2 = 1.d0/(3.d0*KMe)
+       
+       !ABCDFGH
+       A = lambda1*DTIME + lambda2
+       B = 2.d0*(mu1*DTIME + mu2)
+       
+       D = phi1*DTIME + phi2
+       F = 2.d0*(psi1*DTIME + psi2)
+       G = zeta1*DTIME + zeta2
+       H = omega1*DTIME + omega2
+       
+       
+       !Initialize
+       DDSDDE = 0.d0
+       DDSDE = 0.d0
+       DDSDS = 0.d0
+       SIGold = 0.d0
+       ones = 0.d0
+       diag = 0.d0
+       
+       !Define Tensor coefficients
+       ones(1:NTENS,1:NTENS) = 1.d0
+       diag(1:NTENS,1:NTENS) = 0.d0
+       forall(K1=1:NTENS) diag(K1,K1) = 1.d0
+       
+       !Define DDSDDE, DDSDE, DDSDS related to Normal Stress
+       DDSDDE(1:NDI,1:NDI) = (A-D*H/G)/F*ones(1:NDI,1:NDI) 
+     !                             + B/F*diag(1:NDI,1:NDI)
+       
+       DDSDE(1:NDI,1:NDI) = DTIME/F*(lambda1-omega1*D/G)*
+     !           ones(1:NDI,1:NDI) + 2.d0*DTIME*mu1/F*diag(1:NDI,1:NDI)
+       
+       DDSDS(1:NDI,1:NDI) = -DTIME*(-phi1+D*zeta1/G)/F*
+     !           ones(1:NDI,1:NDI) - 2.d0*DTIME*psi1/F*diag(1:NDI,1:NDI)
+       
+       !Define DDSDDE, DDSDE, DDSDS related to Shear Stress
+       DDSDDE(NDI+1:NTENS,NDI+1:NTENS) = B/2.d0/F
+     !                                *diag(NDI+1:NTENS,NDI+1:NTENS)
+       DDSDE(NDI+1:NTENS,NDI+1:NTENS) = DTIME*mu1/F
+     !                                *diag(NDI+1:NTENS,NDI+1:NTENS)
+       DDSDS(NDI+1:NTENS,NDI+1:NTENS) = -2.d0*DTIME*psi1/F
+     !                                *diag(NDI+1:NTENS,NDI+1:NTENS)
+
+       !evol = sum(STRAN(1:3)+DSTRAN(1:3))
+       !!edev(1:3) = STRAN(1:3)+DSTRAN(1:3) - evol/3.d0
+       !!edev(4:6) = 0.5d0*(STRAN(4:6)+DSTRAN(4:6))
+       !
+       !Kb=pt/3.d0*(1.d0+e0)/K*exp(-(1.d0+e0)/K*evol)-2.d0*G/3.d0
+       !DDSDDE(1:6,1:6) = 0.d0
+       !forall(j=1:3) DDSDDE(j,j) = DDSDDE(j,j) + 2.d0*G
+       !forall(j=4:6) DDSDDE(j,j) = DDSDDE(j,j) + G
+       !DDSDDE(1:3,1:3) =  DDSDDE(1:3,1:3) + Kb
+       
+       !Store present stress state ub array SIGold
+       do i = 1,ntens
+           SIGold(i) = stress(i)
+       end do
+       
+       !Update stresses
        do i = 1,ntens
        do j = 1,ntens
           stress(i) = stress(i) + DDSDDE(i,j)*(DSTRAN(j))
+     !                          + DDSDE(i,j)*(STRAN(j))
+     !                          + DDSDS(i,j)*(SIGold(j))
+
        end do
        end do
        return
@@ -283,4 +364,4 @@
 
 
       RETURN
-      END SUBROUTINE UMAT_PE
+      END SUBROUTINE UMAT

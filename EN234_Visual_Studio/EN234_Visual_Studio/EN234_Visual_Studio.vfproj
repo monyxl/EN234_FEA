@@ -70,6 +70,7 @@
 		<File RelativePath="..\..\EN234_FEA\input_files\Abaqus_umat_linear_elastic_3d.in"/>
 		<File RelativePath="..\..\EN234_FEA\input_files\Abaqus_umat_porous_elastic.in"/>
 		<File RelativePath="..\..\EN234_FEA\input_files\Abaqus_umat_stretch_rotate.in"/>
+		<File RelativePath="..\..\EN234_FEA\input_files\Abaqus_umat_viscoelastic_3d_ver2.in"/>
 		<File RelativePath="..\..\EN234_FEA\input_files\Abaqus_umat_viscoplastic.in"/>
 		<File RelativePath="..\..\EN234_FEA\input_files\Abaqus_vuel_holeplate_3d.in"/>
 		<File RelativePath="..\..\EN234_FEA\input_files\Abaqus_vuel_linear_elastic_3d.in"/>
@@ -93,6 +94,7 @@
 		<File RelativePath="..\..\EN234_FEA\modules\Types.f90"/>
 		<File RelativePath="..\..\EN234_FEA\modules\User_Subroutine_Storage.f90"/></Filter>
 		<Filter Name="Source Files" Filter="f90;for;f;fpp;ftn;def;odl;idl">
+		<File RelativePath="..\..\EN234_FEA\input_files\Abaqus_umat_viscoelastic_3d_ver1.in"/>
 		<File RelativePath="..\..\EN234_FEA\src\bandwidth_minimizer.f90"/>
 		<File RelativePath="..\..\EN234_FEA\src\checkstiffness.f90"/>
 		<File RelativePath="..\..\EN234_FEA\src\checktangent.f90"/>
@@ -119,6 +121,7 @@
 		<File RelativePath="..\..\EN234_FEA\user_codes\src\abaqus_uel_neohooke.for"/>
 		<File RelativePath="..\..\EN234_FEA\user_codes\src\abaqus_umat_elastic_mod.for"/>
 		<File RelativePath="..\..\EN234_FEA\user_codes\src\abaqus_umat_porous_elastic.for"/>
+		<File RelativePath="..\..\EN234_FEA\user_codes\src\abaqus_umat_viscoelastic_ver1.for"/>
 		<File RelativePath="..\..\EN234_FEA\user_codes\src\abaqus_vuel.for"/>
 		<File RelativePath="..\..\EN234_FEA\user_codes\src\abaqus_vumat.f90"/>
 		<File RelativePath="..\..\EN234_FEA\user_codes\src\abaqus_vumat_viscoplastic.for"/>
